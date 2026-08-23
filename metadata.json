@@ -1,0 +1,5 @@
+{
+  "name": "Mini SR Test",
+  "description": "A personalized Star Reading assessment generator for elementary students. Generates vocabulary, grammar, and reading comprehension questions based on SR levels, with online and print-friendly modes.",
+  "requestFramePermissions": []
+}

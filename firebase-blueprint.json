@@ -1,0 +1,73 @@
+{
+  "entities": {
+    "TestSession": {
+      "title": "TestSession",
+      "description": "Represents an SR test session, either in-progress or completed.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique session ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of the user who owns this test session"
+        },
+        "srLevel": {
+          "type": "string",
+          "description": "The target SR level (e.g. 2.5, 3.0)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["IN_PROGRESS", "COMPLETED"],
+          "description": "Status of the test session"
+        },
+        "currentStep": {
+          "type": "number",
+          "description": "The current question step index for paused tests"
+        },
+        "score": {
+          "type": "number",
+          "description": "Score percentage (0-100)"
+        },
+        "totalQuestions": {
+          "type": "number",
+          "description": "Total number of questions in test"
+        },
+        "correctCount": {
+          "type": "number",
+          "description": "Number of correct answers"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp when the test was generated"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp when test was last saved"
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "ISO timestamp when test was completed"
+        },
+        "testData": {
+          "type": "object",
+          "description": "The complete test data JSON including questions and passages"
+        },
+        "userAnswers": {
+          "type": "object",
+          "description": "Map of question ID to chosen option index"
+        }
+      },
+      "required": ["id", "userId", "srLevel", "status", "createdAt", "updatedAt", "testData", "userAnswers"]
+    }
+  },
+  "firestore": {
+    "/testSessions/{sessionId}": {
+      "schema": {
+        "$ref": "#/entities/TestSession"
+      },
+      "description": "Collection of SR test sessions created by users."
+    }
+  }
+}

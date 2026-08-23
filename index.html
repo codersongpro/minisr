@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mini SR Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              serif: ['Georgia', 'Cambria', '"Times New Roman"', 'Times', 'serif'],
+              sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', '"Helvetica Neue"', 'Arial', 'sans-serif'],
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* Global Print Utilities */
+      .page-break { 
+        page-break-before: always !important; 
+        break-before: page !important;
+        display: block;
+        width: 100%;
+        height: 0;
+        margin-bottom: 2rem;
+        clear: both;
+      }
+      
+      .new-page-section {
+        page-break-before: always !important;
+        break-before: page !important;
+        display: block;
+        width: 100%;
+        clear: both;
+        margin-top: 0;
+        padding-top: 3rem; /* Increase padding to prevent overlap with previous page content if rendering lags */
+      }
+
+      .avoid-break { 
+        page-break-inside: avoid !important; 
+        break-inside: avoid !important; 
+      }
+
+      /* Specific Print Media Styles */
+      @media print {
+        @page { 
+          size: A4; 
+          margin: 10mm; 
+        }
+        
+        html, body {
+          width: 100%;
+          height: 100%;
+          background: white;
+          -webkit-print-color-adjust: exact; 
+          print-color-adjust: exact; 
+        }
+
+        body > * { display: none; }
+        
+        #root { display: block; }
+        
+        .print-layout { 
+          display: block; 
+          width: 100% !important; 
+          margin: 0 !important; 
+          padding: 0 !important; 
+          box-shadow: none !important;
+          background: white !important;
+        }
+        
+        .print-layout * { visibility: visible; }
+        
+        .no-print { display: none !important; }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.34.0",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
