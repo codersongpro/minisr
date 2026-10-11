@@ -1,5 +1,6 @@
 
 import React, { useRef, useState, useMemo } from 'react';
+import { RichText } from './RichText';
 import { TestData } from '../types';
 import { ArrowLeft, Download, Loader2, Printer } from 'lucide-react';
 
@@ -162,7 +163,7 @@ export const VocabWorksheet: React.FC<VocabWorksheetProps> = ({ data, onBack }) 
                           </div>
                           {/* English Definition */}
                           <span className="text-[12px] text-gray-600 font-sans ml-11 mt-1 leading-snug">
-                            {v.definition}
+                            <RichText text={v.definition} />
                           </span>
                         </div>
                         {/* Korean Meaning */}
@@ -214,7 +215,7 @@ export const VocabWorksheet: React.FC<VocabWorksheetProps> = ({ data, onBack }) 
                       <div className="mt-3 ml-16 p-3 bg-gray-50 border-l-4 border-gray-400 rounded-r-sm">
                         <div className="flex gap-2 items-start">
                           <span className="font-bold text-[10px] text-black uppercase flex-shrink-0 mt-0.5 bg-gray-200 px-1 rounded">Ex</span>
-                          <p className="text-[13px] text-gray-800 italic leading-relaxed">"{v.example}"</p>
+                          <p className="text-[13px] text-gray-800 italic leading-relaxed">"<RichText text={v.example} />"</p>
                         </div>
                       </div>
                     </div>

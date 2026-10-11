@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { RichText } from './RichText';
+import { stripMarkup } from '../services/markup';
 import { TestData, UserAnswers, Question, ReadingSection, TIMED_OUT_ANSWER } from '../types';
 import { estimateFromTest } from '../services/adaptiveEngine';
 import { RefreshCw, Printer, CheckCircle, XCircle, Download, ChevronRight, ChevronLeft, Volume2, Sparkles, Filter, Loader2, Headphones, TrendingUp, AlertTriangle, Award, Target, BookOpen, Brain } from 'lucide-react';
@@ -487,19 +489,19 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                                     <p className="font-bold mb-1">{passageByQuestionId.get(q.id)!.passageTitle}</p>
                                   )}
                                   {passageByQuestionId.get(q.id)!.passageContent.split('\n').map((para, i) => (
-                                    <p key={i} className="mb-2">{para}</p>
+                                    <p key={i} className="mb-2"><RichText text={para} /></p>
                                   ))}
                                 </div>
                               </details>
                             )}
-                            <p className="font-bold text-black text-base md:text-lg leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
+                            <p className="font-bold text-black text-base md:text-lg leading-snug"><RichText text={q.question} /></p>
                             
                             {q.type === 'LISTENING' && q.script && (
                               <div className="mt-2 p-3 bg-white rounded-lg text-sm text-gray-800 italic border-l-4 border-blue-400 shadow-sm">
                                 <span className="font-bold not-italic text-blue-900 block text-xs uppercase mb-1">Listening Script:</span>
                                 "{q.script}"
                                 <button 
-                                  onClick={() => speakWord(q.script!)}
+                                  onClick={() => speakWord(stripMarkup(q.script))}
                                   className="ml-2 inline-block align-middle text-blue-600 hover:text-blue-800"
                                 >
                                   <Volume2 className="w-4 h-4" />
@@ -519,13 +521,13 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                           <div className="flex items-center text-black">
                             <span className="w-24 font-bold text-gray-600">선택한 답:</span>
                             <span className={`${!isCorrect ? 'text-red-600 font-extrabold underline' : 'text-black font-bold'}`}>
-                              {answers[q.id] === TIMED_OUT_ANSWER ? '시간 초과' : q.options[answers[q.id]] !== undefined ? q.options[answers[q.id]] : '미응답'}
+                              {answers[q.id] === TIMED_OUT_ANSWER ? '시간 초과' : q.options[answers[q.id]] !== undefined ? stripMarkup(q.options[answers[q.id]]) : '미응답'}
                             </span>
                           </div>
                           {!isCorrect && (
                             <div className="flex items-center text-black">
                               <span className="w-24 font-bold text-green-700">정답:</span>
-                              <span className="text-green-700 font-bold">{q.options[q.correctAnswer]}</span>
+                              <span className="text-green-700 font-bold">{stripMarkup(q.options[q.correctAnswer])}</span>
                             </div>
                           )}
 
@@ -535,7 +537,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                               생각하며 읽는 질문형 코칭
                             </span>
                             <p className="mt-1.5 text-sm leading-relaxed text-gray-800 font-medium">
-                              {q.explanation}
+                              <RichText text={q.explanation} />
                             </p>
                           </div>
                         </div>
@@ -578,12 +580,12 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                   </button>
                 </div>
                 
-                <p className="text-sm text-gray-500 mb-4 font-medium italic">{data.keyVocabulary[vocabIndex].definition}</p>
+                <p className="text-sm text-gray-500 mb-4 font-medium italic"><RichText text={data.keyVocabulary[vocabIndex].definition} /></p>
                 <p className="text-xl text-gray-900 mb-6 font-bold">{data.keyVocabulary[vocabIndex].meaning}</p>
 
                 <div className="text-left bg-white p-4 rounded-xl border border-gray-200">
                   <p className="text-xs font-bold text-gray-400 uppercase mb-1">Example Sentence</p>
-                  <p className="text-black italic">"{data.keyVocabulary[vocabIndex].example}"</p>
+                  <p className="text-black italic">"<RichText text={data.keyVocabulary[vocabIndex].example} />"</p>
                 </div>
               </div>
 

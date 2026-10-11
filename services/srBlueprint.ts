@@ -2,6 +2,7 @@
 // 실제 Star Reading: 34문항 컴퓨터 적응형 시험, 앞 10문항은 Word Knowledge and Skills(빈칸 어휘),
 // 나머지 24문항은 짧은 지문 1개 + 문항 1개 구조로 4개 이해 영역에 걸쳐 출제된다.
 import type { Question, TestData } from '../types';
+import { stripMarkup } from './markup.js';
 
 export type TestLength = 'full' | 'mini';
 
@@ -134,16 +135,18 @@ export const normalizeTestData = (data: TestData): TestData => {
   let nextId = 1;
   const fix = (q: Question): Question => ({ ...q, id: nextId++ });
 
-  const vocabulary = (data.vocabulary || []).filter(isValidQuestion).map(fix);
-  const grammar = (data.grammar || []).filter(isValidQuestion).map(fix);
+  // 선택지는 순수 텍스트로만 보여 주므로 AI가 붙인 태그(<u> 등)를 지운다.
+  const clean = (q: Question): Question => (q && Array.isArray(q.options) ? { ...q, options: q.options.map(stripMarkup) } : q);
+  const vocabulary = (data.vocabulary || []).map(clean).filter(isValidQuestion).map(fix);
+  const grammar = (data.grammar || []).map(clean).filter(isValidQuestion).map(fix);
   const reading = (data.reading || [])
-    .map((s) => ({ ...s, passageTitle: s.passageTitle || '', questions: (s.questions || []).filter(isValidQuestion) }))
+    .map((s) => ({ ...s, passageTitle: s.passageTitle || '', questions: (s.questions || []).map(clean).filter(isValidQuestion) }))
     .filter((s) => typeof s.passageContent === 'string' && s.passageContent.trim().length > 0 && s.questions.length > 0)
     .map((s) => ({ ...s, questions: s.questions.map(fix) }));
-  const listening = (data.listening || []).filter(isValidQuestion).map(fix);
+  const listening = (data.listening || []).map(clean).filter(isValidQuestion).map(fix);
 
   const seen = new Set<string>();
-  const keyVocabulary = (data.keyVocabulary || []).filter((w) => {
+  const keyVocabulary = (data.keyVocabulary || []).map((w) => ({ ...w, word: stripMarkup(w?.word) })).filter((w) => {
     const key = w?.word?.trim().toLowerCase();
     if (!key || seen.has(key)) return false;
     seen.add(key);
