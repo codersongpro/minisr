@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { BookOpen, Star, Loader2, Headphones, History, Play } from 'lucide-react';
+import { BookOpen, Star, Loader2, Headphones, History, Play, Timer } from 'lucide-react';
 import { TestSession } from '../types';
+import { TestLength, getTimeLimits } from '../services/srBlueprint';
 
 interface WelcomeScreenProps {
-  onStart: (srLevel: string, includeListening: boolean) => void;
+  onStart: (srLevel: string, includeListening: boolean, testLength: TestLength, timed: boolean) => void;
   onOpenHistory: () => void;
   onResumeSession?: (session: TestSession) => void;
   inProgressSession?: TestSession | null;
@@ -19,13 +20,19 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 }) => {
   const [level, setLevel] = useState('3.0');
   const [includeListening, setIncludeListening] = useState(false);
+  const [testLength, setTestLength] = useState<TestLength>('full');
+  const [timed, setTimed] = useState(true);
+  const limits = getTimeLimits(level);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (level && !isLoading) {
-      onStart(level, includeListening);
+      onStart(level, includeListening, testLength, timed);
     }
   };
+
+  const choiceClass = (active: boolean) =>
+    `flex-1 p-3 rounded-xl border-2 text-left transition-colors ${active ? 'border-black bg-gray-100' : 'border-gray-200 bg-white hover:border-gray-400'}`;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
@@ -88,13 +95,41 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             </p>
           </div>
 
+          <div className="text-left">
+            <span className="block text-sm font-medium text-black mb-2">문항 수</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setTestLength('full')} className={choiceClass(testLength === 'full')}>
+                <span className="block font-bold text-sm text-black">실전 34문항</span>
+                <span className="block text-xs text-gray-600 mt-0.5">실제 SR과 같은 구성 (어휘 10 + 지문 24)</span>
+              </button>
+              <button type="button" onClick={() => setTestLength('mini')} className={choiceClass(testLength === 'mini')}>
+                <span className="block font-bold text-sm text-black">미니 17문항</span>
+                <span className="block text-xs text-gray-600 mt-0.5">같은 비율의 절반 구성 (어휘 5 + 지문 12)</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="text-left">
+            <span className="block text-sm font-medium text-black mb-2">풀이 방식</span>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setTimed(true)} className={choiceClass(timed)}>
+                <span className="flex items-center font-bold text-sm text-black"><Timer className="w-4 h-4 mr-1" />실전 모드</span>
+                <span className="block text-xs text-gray-600 mt-0.5">문항별 제한시간 (어휘 {limits.vocabSeconds}초 / 지문 {limits.passageSeconds}초), 이전 문제·힌트 없음</span>
+              </button>
+              <button type="button" onClick={() => setTimed(false)} className={choiceClass(!timed)}>
+                <span className="block font-bold text-sm text-black">연습 모드</span>
+                <span className="block text-xs text-gray-600 mt-0.5">시간 제한 없음, 힌트 보기·이전 문제 이동 가능</span>
+              </button>
+            </div>
+          </div>
+
           <div className="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setIncludeListening(!includeListening)}>
             <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${includeListening ? 'bg-black border-black' : 'border-gray-400 bg-white'}`}>
               {includeListening && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
             </div>
             <div className="flex items-center select-none">
               <Headphones className="w-5 h-5 text-black mr-2" />
-              <span className="text-black font-bold text-sm">Listening(듣기) 문제 포함</span>
+              <span className="text-black font-bold text-sm">Listening(듣기) 문제 포함 <span className="font-normal text-gray-600">(실제 SR에는 없는 추가 연습)</span></span>
             </div>
           </div>
 
@@ -126,7 +161,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       </div>
       
       <div className="mt-6 text-center text-black text-sm max-w-sm font-medium">
-        <p>AI가 입력하신 레벨에 맞춰 문제를 생성합니다. (듣기 선택 시 +2문제)</p>
+        <p>AI가 입력하신 레벨을 기준으로 실제 Star Reading의 5개 영역과 문항 형식에 맞춰 문제를 생성합니다. 생성에 30초~1분 정도 걸립니다. (듣기 선택 시 +2문제)</p>
       </div>
     </div>
   );

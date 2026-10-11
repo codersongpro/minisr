@@ -1,4 +1,5 @@
 import { TestData, Question } from '../types';
+import type { TestLength } from './srBlueprint';
 
 async function request<T>(body: Record<string, unknown>): Promise<T> {
   const response = await fetch('/api/gemini', {
@@ -12,8 +13,8 @@ async function request<T>(body: Record<string, unknown>): Promise<T> {
   return payload as T;
 }
 
-export const generateSRTest = (srLevel: string, includeListening = false) =>
-  request<TestData>({ action: 'generate', srLevel, includeListening });
+export const generateSRTest = (srLevel: string, includeListening = false, testLength: TestLength = 'full') =>
+  request<TestData>({ action: 'generate', srLevel, includeListening, testLength });
 
 export const generateTwinTest = (wrongQuestions: Question[], srLevel: string) =>
   request<TestData>({ action: 'twin', wrongQuestions, srLevel });

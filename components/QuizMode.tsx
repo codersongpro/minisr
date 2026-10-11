@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TestData, UserAnswers } from '../types';
-import { ChevronRight, ChevronLeft, Check, FileText, Volume2, StopCircle, Loader2, HelpCircle, PauseCircle, Save } from 'lucide-react';
+import { TestData, UserAnswers, TIMED_OUT_ANSWER } from '../types';
+import { ChevronRight, ChevronLeft, Check, FileText, Volume2, StopCircle, Loader2, HelpCircle, PauseCircle, Clock } from 'lucide-react';
 import { generateSpeech } from '../services/geminiClient';
+import { getTimeLimits } from '../services/srBlueprint';
+
+// 실제 Star Reading은 남은 시간이 15초일 때 경고를 띄운다.
+const TIME_WARNING_SECONDS = 15;
 
 interface QuizModeProps {
   data: TestData;
@@ -86,6 +90,29 @@ export const QuizMode: React.FC<QuizModeProps> = ({
   
   const currentQuestion = allQuestions[currentStep];
 
+  // 실전 모드: 문항별 제한시간 (어휘 문항과 지문 문항의 시간이 다르다)
+  const timed = !!data.timed;
+  const limits = getTimeLimits(data.srLevel);
+  const timeLimit = currentQuestion.type === 'VOCAB' ? limits.vocabSeconds : limits.passageSeconds;
+  const [timeLeft, setTimeLeft] = useState(timeLimit);
+
+  useEffect(() => {
+    if (!timed) return;
+    setTimeLeft(timeLimit);
+    const timer = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [currentStep, timed]);
+
+  useEffect(() => {
+    if (!timed || timeLeft > 0) return;
+    // 시간이 끝나면 고른 답이 있으면 그대로, 없으면 미응답(오답)으로 넘어간다.
+    const finalAnswers = answers[currentQuestion.id] === undefined
+      ? { ...answers, [currentQuestion.id]: TIMED_OUT_ANSWER }
+      : answers;
+    setAnswers(finalAnswers);
+    nextQuestion(finalAnswers);
+  }, [timeLeft]);
+
   // Initialize Audio Context on mount
   useEffect(() => {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -129,14 +156,14 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     onPauseAndSave(updatedAnswers, currentStep);
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = (currentAnswers: UserAnswers = answers) => {
     stopAudio();
     if (currentStep < totalQuestions - 1) {
       const nextStep = currentStep + 1;
       setCurrentStep(nextStep);
-      onPauseAndSave(answers, nextStep);
+      onPauseAndSave(currentAnswers, nextStep);
     } else {
-      onComplete(answers);
+      onComplete(currentAnswers);
     }
   };
 
@@ -201,6 +228,9 @@ export const QuizMode: React.FC<QuizModeProps> = ({
   const isListeningSection = currentQuestion.type === 'LISTENING';
   
   const readingQuestion = isReadingSection ? (currentQuestion as any) : null;
+  const isCloze = currentQuestion.question.includes('___');
+  const selectedAnswer = answers[currentQuestion.id];
+  const hasAnswer = selectedAnswer !== undefined && selectedAnswer !== TIMED_OUT_ANSWER;
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
@@ -217,6 +247,15 @@ export const QuizMode: React.FC<QuizModeProps> = ({
           </div>
 
           <div className="flex items-center space-x-2">
+            {timed && (
+              <span
+                className={`flex items-center text-sm font-bold px-3 py-1.5 rounded-lg border tabular-nums ${timeLeft <= TIME_WARNING_SECONDS ? 'bg-red-50 text-red-700 border-red-300 animate-pulse' : 'bg-white text-black border-gray-300'}`}
+                title="문항별 제한시간이 지나면 다음 문제로 넘어갑니다."
+              >
+                <Clock className="w-4 h-4 mr-1" />
+                {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, '0')}
+              </span>
+            )}
             <button
               onClick={() => onPauseAndSave(answers, currentStep)}
               className="flex items-center text-xs md:text-sm font-bold bg-white text-black border border-black hover:bg-gray-100 px-3 py-1.5 rounded-lg shadow-sm transition-all"
@@ -244,9 +283,11 @@ export const QuizMode: React.FC<QuizModeProps> = ({
               <FileText className="w-6 h-6 text-black" />
               <h3 className="font-bold text-xl text-black">Reading Passage</h3>
             </div>
-            <h4 className="text-2xl font-serif font-bold text-black mb-4">
-              {readingQuestion.passageTitle}
-            </h4>
+            {readingQuestion.passageTitle && (
+              <h4 className="text-2xl font-serif font-bold text-black mb-4">
+                {readingQuestion.passageTitle}
+              </h4>
+            )}
             <div className="prose prose-lg text-black leading-loose font-serif max-w-none">
               {readingQuestion.passageContent.split('\n').map((para: string, idx: number) => (
                 <p key={idx} className="mb-4 text-2xl text-black text-justify">{para}</p>
@@ -258,14 +299,16 @@ export const QuizMode: React.FC<QuizModeProps> = ({
         {/* Question Panel */}
         <div className={`${isReadingSection ? 'md:col-span-6' : 'md:col-span-8 md:col-start-3'} flex flex-col`}>
           <div className="bg-white p-8 rounded-2xl shadow-lg border-t-4 border-black flex-grow">
-            <div className="flex items-center justify-between mb-4">
+            {!timed && (
+            <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
                <span className={`inline-block px-3 py-1 text-sm font-bold rounded-full ${isListeningSection ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-black'}`}>
                 {currentQuestion.type}
               </span>
-              <span className="text-sm font-bold text-gray-500 uppercase tracking-wide">
-                {currentQuestion.domain}
+              <span className="text-sm font-bold text-gray-500 uppercase tracking-wide text-right">
+                {currentQuestion.domain}{currentQuestion.skill ? ` · ${currentQuestion.skill}` : ''}
               </span>
             </div>
+            )}
             
             {/* Listening Audio Control */}
             {isListeningSection && currentQuestion.script && (
@@ -297,13 +340,16 @@ export const QuizMode: React.FC<QuizModeProps> = ({
             )}
 
             {/* Question Text */}
+            {isCloze && (
+              <p className="text-sm font-bold text-gray-600 mb-3">Choose the word that best completes the sentence.</p>
+            )}
             <h2 
               className="text-xl md:text-2xl font-bold text-black mb-6 leading-snug"
               dangerouslySetInnerHTML={{ __html: currentQuestion.question }} 
             />
 
             {/* Practice Hint Accordion (Matching Star Reading Practice sheets format) */}
-            {currentQuestion.hint && (
+            {currentQuestion.hint && !timed && (
               <div className="mb-6">
                 <button
                   type="button"
@@ -329,18 +375,18 @@ export const QuizMode: React.FC<QuizModeProps> = ({
                   key={idx}
                   onClick={() => handleAnswer(idx)}
                   className={`w-full text-left p-5 rounded-xl border-2 transition-all duration-200 flex items-center group
-                    ${answers[currentQuestion.id] === idx 
+                    ${selectedAnswer === idx 
                       ? 'border-black bg-gray-100 text-black' 
                       : 'border-gray-300 hover:border-black hover:bg-white text-black'
                     }`}
                 >
                   <div className={`w-8 h-8 rounded-full border-2 mr-5 flex items-center justify-center flex-shrink-0
-                    ${answers[currentQuestion.id] === idx 
+                    ${selectedAnswer === idx 
                       ? 'border-black bg-black' 
                       : 'border-gray-400 group-hover:border-black'
                     }`}
                   >
-                    {answers[currentQuestion.id] === idx && <Check className="w-5 h-5 text-white" />}
+                    {selectedAnswer === idx && <Check className="w-5 h-5 text-white" />}
                   </div>
                   <span className="text-xl font-medium text-black">{option}</span>
                 </button>
@@ -358,6 +404,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
             </button>
             
             <div className="flex gap-4">
+              {!timed && (
               <button
                 onClick={prevQuestion}
                 disabled={currentStep === 0}
@@ -366,10 +413,11 @@ export const QuizMode: React.FC<QuizModeProps> = ({
                 <ChevronLeft className="w-6 h-6 mr-1" />
                 <span>이전</span>
               </button>
+              )}
 
               <button
-                onClick={nextQuestion}
-                disabled={answers[currentQuestion.id] === undefined}
+                onClick={() => nextQuestion()}
+                disabled={!hasAnswer}
                 className="bg-black hover:bg-gray-800 text-white font-bold py-3.5 px-8 md:px-10 rounded-xl shadow-lg disabled:opacity-50 disabled:shadow-none transition-all flex items-center text-lg"
               >
                 <span>{currentStep === totalQuestions - 1 ? '결과 제출하기' : '다음 문제'}</span>

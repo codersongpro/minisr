@@ -7,6 +7,7 @@ import { VocabWorksheet } from './components/VocabWorksheet';
 import { HistoryView } from './components/HistoryView';
 import { generateSRTest, generateTwinTest } from './services/geminiClient';
 import { TestData, UserAnswers, TestSession } from './types';
+import type { TestLength } from './services/srBlueprint';
 import { initAuthListener, testFirestoreConnection } from './services/firebase';
 import { saveTestSession, fetchUserTestSessions, removeTestSession } from './services/storageService';
 import { History, BookOpen, User as UserIcon } from 'lucide-react';
@@ -57,12 +58,12 @@ const App: React.FC = () => {
     setSessions(updated);
   };
 
-  const handleStart = async (srLevel: string, includeListening: boolean) => {
+  const handleStart = async (srLevel: string, includeListening: boolean, testLength: TestLength, timed: boolean) => {
     setLoading(true);
     setError(null);
     setIsTwinMode(false);
     try {
-      const data = await generateSRTest(srLevel, includeListening);
+      const data: TestData = { ...(await generateSRTest(srLevel, includeListening, testLength)), timed };
       setTestData(data);
       setUserAnswers({});
       setCurrentStep(0);

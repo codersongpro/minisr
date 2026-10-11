@@ -19,10 +19,11 @@ export default async function handler(req, res) {
   const body = req.body || {};
   try {
     if (body.action === 'generate') {
-      if (!validLevel(body.srLevel) || typeof body.includeListening !== 'boolean') {
+      const testLength = body.testLength ?? 'full';
+      if (!validLevel(body.srLevel) || typeof body.includeListening !== 'boolean' || !['full', 'mini'].includes(testLength)) {
         return json(res, 400, { error: '문제 생성 요청이 올바르지 않습니다.' });
       }
-      return json(res, 200, await generateSRTest(String(body.srLevel), body.includeListening));
+      return json(res, 200, await generateSRTest(String(body.srLevel), body.includeListening, testLength));
     }
 
     if (body.action === 'twin') {
