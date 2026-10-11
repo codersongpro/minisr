@@ -1,11 +1,8 @@
 // 동기화 코드용 Firebase Admin 저장소. 서비스 계정 키는 서버 환경변수에만 둔다.
-import { createRequire } from 'node:module';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
-
-const require = createRequire(import.meta.url);
-const firebaseConfig = require('../firebase-applet-config.json');
+import firebaseConfig from '../firebase-applet-config.json' with { type: 'json' };
 
 export const SYNC_UID_PREFIX = 'sync_';
 const BATCH_LIMIT = 400;

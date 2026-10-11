@@ -1,6 +1,6 @@
 import { hasValidSession, isSameOrigin } from './_auth.js';
-import { generatePassageItems, generateSRTest, generateSpeech, generateTwinTest, generateVocabItems } from '../services/geminiService.ts';
-import { SR_DOMAINS } from '../services/srBlueprint.ts';
+import { generatePassageItems, generateSRTest, generateSpeech, generateTwinTest, generateVocabItems } from '../services/geminiService.js';
+import { SR_DOMAINS } from '../services/srBlueprint.js';
 
 const PASSAGE_DOMAINS = new Set(Object.values(SR_DOMAINS));
 const MAX_PASSAGE_SPECS = 8;

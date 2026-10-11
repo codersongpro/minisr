@@ -1,8 +1,9 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { TestData, Question, ReadingSection, VocabWord, PassageItemSpec } from "../types";
-import { DOMAIN_SKILLS, SR_DOMAINS, TestLength, clozeLengthFor, getBlueprint, normalizeTestData, optionCountFor, passageWordsFor } from "./srBlueprint";
-import { VOCAB_POOL_SIZE, createAdaptiveState } from "./adaptiveEngine";
+import type { TestData, Question, ReadingSection, VocabWord, PassageItemSpec } from "../types";
+import { DOMAIN_SKILLS, SR_DOMAINS, clozeLengthFor, getBlueprint, normalizeTestData, optionCountFor, passageWordsFor } from "./srBlueprint.js";
+import type { TestLength } from "./srBlueprint.js";
+import { VOCAB_POOL_SIZE, createAdaptiveState } from "./adaptiveEngine.js";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 const MODEL = 'gemini-3-flash-preview';
