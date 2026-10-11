@@ -1,5 +1,4 @@
 // 동기화 코드용 Firebase Admin 저장소. 서비스 계정 키는 서버 환경변수에만 둔다.
-import crypto from 'node:crypto';
 import { createRequire } from 'node:module';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
@@ -9,7 +8,6 @@ const require = createRequire(import.meta.url);
 const firebaseConfig = require('../firebase-applet-config.json');
 
 export const SYNC_UID_PREFIX = 'sync_';
-const MAX_CREATE_ATTEMPTS = 30;
 const BATCH_LIMIT = 400;
 
 let cached;
@@ -40,27 +38,12 @@ export async function anonymousUidFromToken(idToken) {
   }
 }
 
-export async function createSyncCode() {
-  const { auth } = services();
-  for (let attempt = 0; attempt < MAX_CREATE_ATTEMPTS; attempt++) {
-    const code = String(crypto.randomInt(0, 10_000)).padStart(4, '0');
-    try {
-      await auth.createUser({ uid: SYNC_UID_PREFIX + code });
-      return code;
-    } catch (error) {
-      if (error?.code !== 'auth/uid-already-exists') throw error;
-    }
-  }
-  throw new Error('No free sync code available');
-}
-
-export async function syncCodeExists(code) {
+// 관리자가 정한 코드의 계정을 만든다. 이미 있으면 그대로 쓴다.
+export async function ensureSyncCode(code) {
   try {
-    await services().auth.getUser(SYNC_UID_PREFIX + code);
-    return true;
+    await services().auth.createUser({ uid: SYNC_UID_PREFIX + code });
   } catch (error) {
-    if (error?.code === 'auth/user-not-found') return false;
-    throw error;
+    if (error?.code !== 'auth/uid-already-exists') throw error;
   }
 }
 
@@ -78,7 +61,7 @@ export async function moveSessions(fromUid, toUid) {
 
 export const createLoginToken = (code) => services().auth.createCustomToken(SYNC_UID_PREFIX + code);
 
-// 4자리 코드는 경우의 수가 1만 개뿐이라, 같은 IP의 시도 횟수를 시간당으로 제한한다.
+// 관리자 비밀번호 대입을 막기 위해 같은 IP의 시도 횟수를 시간당으로 제한한다.
 export async function consumeRateLimit(key, limit, windowMs) {
   const { db } = services();
   const ref = db.collection('syncRateLimits').doc(key);

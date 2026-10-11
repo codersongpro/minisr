@@ -325,7 +325,6 @@ const App: React.FC = () => {
           <WelcomeScreen 
             onStart={handleStart} 
             onOpenHistory={() => setMode(AppMode.HISTORY)}
-            onSynced={refreshSessions}
             onResumeSession={handleResumeSession}
             inProgressSession={inProgressSession}
             isLoading={loading} 
