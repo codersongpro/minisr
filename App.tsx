@@ -325,6 +325,7 @@ const App: React.FC = () => {
           <WelcomeScreen 
             onStart={handleStart} 
             onOpenHistory={() => setMode(AppMode.HISTORY)}
+            onSynced={refreshSessions}
             onResumeSession={handleResumeSession}
             inProgressSession={inProgressSession}
             isLoading={loading} 
@@ -345,6 +346,7 @@ const App: React.FC = () => {
             }}
             onDeleteSession={handleDeleteSession}
             onNewTest={handleRestart}
+            onSynced={refreshSessions}
           />
         )}
 

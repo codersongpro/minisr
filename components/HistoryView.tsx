@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { TestSession } from '../types';
+import { SyncCodePanel } from './SyncCodePanel';
 import { Clock, Star, Play, CheckCircle, Trash2, Calendar, FileText, ArrowUpDown, Filter, Award, RotateCcw } from 'lucide-react';
 
 interface HistoryViewProps {
@@ -9,6 +10,7 @@ interface HistoryViewProps {
   onPrintSession: (session: TestSession) => void;
   onDeleteSession: (sessionId: string) => void;
   onNewTest: () => void;
+  onSynced: () => void;
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({
@@ -17,7 +19,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   onViewResults,
   onPrintSession,
   onDeleteSession,
-  onNewTest
+  onNewTest,
+  onSynced
 }) => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'IN_PROGRESS' | 'COMPLETED'>('ALL');
   const [srLevelFilter, setSrLevelFilter] = useState<string>('ALL');
@@ -74,6 +77,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
+      <div className="mb-6">
+        <SyncCodePanel onSynced={onSynced} />
+      </div>
+
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center space-x-4">

@@ -2,10 +2,12 @@ import React, { useState } from 'react';
 import { BookOpen, Star, Loader2, Headphones, History, Play, Timer } from 'lucide-react';
 import { TestSession } from '../types';
 import { TestLength, getTimeLimits } from '../services/srBlueprint';
+import { SyncCodePanel } from './SyncCodePanel';
 
 interface WelcomeScreenProps {
   onStart: (srLevel: string, includeListening: boolean, testLength: TestLength, timed: boolean, extendedTime: boolean) => void;
   onOpenHistory: () => void;
+  onSynced: () => void;
   onResumeSession?: (session: TestSession) => void;
   inProgressSession?: TestSession | null;
   isLoading: boolean;
@@ -14,6 +16,7 @@ interface WelcomeScreenProps {
 export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ 
   onStart, 
   onOpenHistory, 
+  onSynced,
   onResumeSession, 
   inProgressSession, 
   isLoading 
@@ -165,6 +168,9 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             <History className="w-4 h-4 text-black" />
             <span>이전 테스트 기록 및 오답 모아보기</span>
           </button>
+          <div className="mt-4">
+            <SyncCodePanel onSynced={onSynced} />
+          </div>
         </div>
       </div>
       

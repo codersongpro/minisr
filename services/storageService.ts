@@ -120,3 +120,19 @@ export async function removeTestSession(sessionId: string): Promise<void> {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
+
+// 동기화 코드를 바꾸거나 해제할 때, 이 기기에 남은 다른 코드의 기록을 지운다.
+export function clearLocalSessions() {
+  try {
+    localStorage.removeItem(LOCAL_STORAGE_KEY);
+  } catch (e) {
+    console.error("Error clearing localStorage sessions:", e);
+  }
+}
+
+// 이 기기에만 있던 기록을 현재 계정(동기화 코드)으로 올린다.
+export async function uploadLocalSessions(): Promise<void> {
+  for (const session of getLocalSessions()) {
+    await saveTestSession(session);
+  }
+}
