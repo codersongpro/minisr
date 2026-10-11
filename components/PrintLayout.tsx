@@ -61,6 +61,9 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
   const listeningStart = readingStart + totalReadingQs;
 
   let currentReadingQIndex = readingStart;
+  // 이전 버전 데이터에만 Part 2(grammar)가 있으므로 파트 번호를 동적으로 매긴다.
+  const readingPart = data.grammar.length > 0 ? 3 : 2;
+  const listeningPart = readingPart + 1;
 
   return (
     <div className="min-h-screen bg-gray-100 print:bg-white">
@@ -149,7 +152,12 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{q.domain}</span>
                     <div className="flex items-start">
                       <span className="font-bold mr-3 text-black text-xl">{vocabStart + i}.</span>
-                      <p className="text-black font-medium text-xl leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
+                      <div>
+                        {q.question.includes('___') && (
+                          <p className="text-sm text-gray-600 mb-1">Choose the word that best completes the sentence.</p>
+                        )}
+                        <p className="text-black font-medium text-xl leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
+                      </div>
                     </div>
                   </div>
                   <div className="ml-9 space-y-1.5">
@@ -166,7 +174,8 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
             </div>
           </section>
 
-          {/* Part 2: Grammar */}
+          {/* Part 2: Grammar (이전 버전 시험 데이터에만 존재) */}
+          {data.grammar.length > 0 && (
           <section className="mb-10">
             <div className="flex items-center mb-6 border-b-2 border-gray-200 pb-2 avoid-break">
               <span className="text-xl font-bold uppercase tracking-wider text-black mr-4">Part 2</span>
@@ -195,6 +204,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
               ))}
             </div>
           </section>
+          )}
 
           {/* Explicit Page Break before Reading Section */}
           <div className="page-break"></div>
@@ -202,18 +212,20 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
           {/* Part 3: Reading Comprehension */}
           <section className="mt-8">
             <div className="flex items-center mb-6 border-b-2 border-gray-200 pb-2 avoid-break">
-              <span className="text-xl font-bold uppercase tracking-wider text-black mr-4">Part 3</span>
+              <span className="text-xl font-bold uppercase tracking-wider text-black mr-4">Part {readingPart}</span>
               <h2 className="text-xl font-bold text-black italic">Reading Comprehension</h2>
             </div>
             
             {data.reading.map((section, sectionIdx) => (
               <div 
                 key={sectionIdx} 
-                className={`mb-10 ${sectionIdx > 0 ? 'new-page-section' : ''}`}
+                className={`mb-10 ${section.questions.length > 1 && sectionIdx > 0 ? 'new-page-section' : 'avoid-break'}`}
               >
                 {/* Passage - Increased size significantly for readability */}
                 <div className="p-6 border border-black mb-6 bg-white avoid-break">
-                  <h3 className="text-2xl font-bold font-serif text-center mb-4 text-black">{section.passageTitle}</h3>
+                  {section.passageTitle && (
+                    <h3 className="text-2xl font-bold font-serif text-center mb-4 text-black">{section.passageTitle}</h3>
+                  )}
                   <div className="prose prose-xl prose-p:my-3 font-serif text-black leading-loose text-justify max-w-none break-words">
                     {section.passageContent.split('\n').map((p, idx) => (
                       <p key={idx} className="indent-8 text-xl">{p}</p>
@@ -254,7 +266,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
           {data.listening && data.listening.length > 0 && (
             <section className="mb-10 new-page-section">
                <div className="flex items-center mb-6 border-b-2 border-gray-200 pb-2 avoid-break">
-                <span className="text-xl font-bold uppercase tracking-wider text-black mr-4">Part 4</span>
+                <span className="text-xl font-bold uppercase tracking-wider text-black mr-4">Part {listeningPart}</span>
                 <h2 className="text-xl font-bold text-black italic">Listening Comprehension</h2>
               </div>
               <p className="mb-4 text-sm text-gray-500 italic">* Parent/Teacher: Please read the scripts provided in the Answer Key section to the student.</p>
@@ -293,7 +305,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
             <div className="space-y-8 text-black">
                {/* Vocab Key */}
                <div className="avoid-break">
-                  <h3 className="font-bold text-xl text-black uppercase tracking-wider mb-4">Part 1: Vocabulary</h3>
+                  <h3 className="font-bold text-xl text-black uppercase tracking-wider mb-4">Part 1: Word Knowledge and Skills</h3>
                   <div className="grid grid-cols-1 gap-4">
                     {data.vocabulary.map((q, i) => (
                       <div key={q.id} className="flex flex-col sm:flex-row sm:items-baseline text-base border-b border-gray-200 pb-3">
@@ -308,6 +320,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                </div>
 
                {/* Grammar Key */}
+               {data.grammar.length > 0 && (
                <div className="avoid-break">
                   <h3 className="font-bold text-xl text-black uppercase tracking-wider mb-4 mt-6">Part 2: Author's Craft</h3>
                   <div className="grid grid-cols-1 gap-4">
@@ -322,10 +335,11 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                     ))}
                   </div>
                </div>
+               )}
 
                {/* Reading Key */}
                <div className="avoid-break">
-                  <h3 className="font-bold text-xl text-black uppercase tracking-wider mb-4 mt-6">Part 3: Reading</h3>
+                  <h3 className="font-bold text-xl text-black uppercase tracking-wider mb-4 mt-6">Part {readingPart}: Reading</h3>
                   <div className="grid grid-cols-1 gap-4">
                     {data.reading.flatMap((s) => s.questions).map((q, i) => (
                       <div key={q.id} className="flex flex-col sm:flex-row sm:items-baseline text-base border-b border-gray-200 pb-3">
@@ -342,7 +356,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                {/* Listening Key & Scripts */}
                {data.listening && data.listening.length > 0 && (
                 <div className="avoid-break">
-                    <h3 className="font-bold text-xl text-black uppercase tracking-wider mb-4 mt-6">Part 4: Listening (Teacher's Script)</h3>
+                    <h3 className="font-bold text-xl text-black uppercase tracking-wider mb-4 mt-6">Part {listeningPart}: Listening (Teacher's Script)</h3>
                     <div className="grid grid-cols-1 gap-4">
                       {data.listening.map((q, i) => (
                         <div key={q.id} className="flex flex-col text-base border-b border-gray-200 pb-3">

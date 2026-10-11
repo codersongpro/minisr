@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { AdminSyncForm } from './AdminSyncForm';
 
 interface PasswordGateProps {
   children: React.ReactNode;
@@ -9,6 +10,7 @@ export const PasswordGate: React.FC<PasswordGateProps> = ({ children }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
 
   useEffect(() => {
     fetch('/api/auth', { credentials: 'include' })
@@ -44,7 +46,14 @@ export const PasswordGate: React.FC<PasswordGateProps> = ({ children }) => {
   if (authenticated) return <>{children}</>;
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+    <main className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+      {adminMode ? (
+        <div className="bg-white border border-gray-200 rounded-2xl shadow-xl p-8 w-full max-w-sm text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">관리자 로그인</h1>
+          <p className="text-sm text-gray-600 mb-6">관리자 비밀번호와 동기화 코드를 입력하면 여러 기기의 기록을 함께 볼 수 있습니다.</p>
+          <AdminSyncForm onSuccess={() => setAuthenticated(true)} />
+        </div>
+      ) : (
       <form onSubmit={unlock} className="bg-white border border-gray-200 rounded-2xl shadow-xl p-8 w-full max-w-sm text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Mini SR Test</h1>
         <p className="text-sm text-gray-600 mb-6">앱을 사용하려면 비밀번호를 입력하세요.</p>
@@ -65,6 +74,10 @@ export const PasswordGate: React.FC<PasswordGateProps> = ({ children }) => {
           {loading ? '확인 중...' : '입장하기'}
         </button>
       </form>
+      )}
+      <button type="button" onClick={() => setAdminMode(!adminMode)} className="mt-4 text-xs text-gray-500 underline">
+        {adminMode ? '일반 입장으로 돌아가기' : '관리자 로그인 (동기화 코드)'}
+      </button>
     </main>
   );
 };

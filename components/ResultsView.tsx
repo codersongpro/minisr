@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { TestData, UserAnswers, Question } from '../types';
+import { TestData, UserAnswers, Question, ReadingSection, TIMED_OUT_ANSWER } from '../types';
+import { estimateFromTest } from '../services/adaptiveEngine';
 import { RefreshCw, Printer, CheckCircle, XCircle, Download, ChevronRight, ChevronLeft, Volume2, Sparkles, Filter, Loader2, Headphones, TrendingUp, AlertTriangle, Award, Target, BookOpen, Brain } from 'lucide-react';
 
 interface ResultsViewProps {
@@ -29,6 +30,18 @@ const getDomainCoachingTip = (domain: string, type: string, percentage: number):
     return "해당 영역의 이해도가 매우 뛰어납니다! 현재의 독서 감각을 잘 유지해주세요.";
   }
 
+  if (d.includes('comprehension strategies')) {
+    return "중심 내용·세부 정보·원인과 결과를 지문에서 근거 문장으로 확인하고, 행간의 의미를 추론하는 연습이 필요합니다.";
+  }
+  if (d.includes('literary')) {
+    return "인물의 말과 행동에서 성격·동기를 찾고, 사건 흐름과 주제(교훈)를 정리하며 읽어보세요.";
+  }
+  if (d.includes('argument')) {
+    return "사실과 의견을 구분하고, 글쓴이의 주장을 뒷받침하는 이유·근거를 찾아 표시하며 읽어보세요.";
+  }
+  if (d.includes('word knowledge')) {
+    return "빈칸 앞뒤의 단서(정의·예시·반대말)로 단어를 고르고, 접두사·접미사로 뜻을 조립하는 연습을 하세요.";
+  }
   if (d.includes('inference') || d.includes('추론')) {
     return "지문에 직접 나오지 않는 행간의 의미와 복선을 연결해보는 연습이 필요합니다.";
   }
@@ -71,6 +84,10 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   const [selectedDomainFilter, setSelectedDomainFilter] = useState<string>('ALL');
 
   const readingQuestions = data.reading.flatMap(r => r.questions);
+  // 오답 노트에서 지문을 다시 볼 수 있도록 문항 id → 지문 매핑
+  const passageByQuestionId = new Map<number, ReadingSection>(
+    data.reading.flatMap(r => r.questions.map(q => [q.id, r] as [number, ReadingSection]))
+  );
   const listeningQuestions = data.listening || [];
   
   const allQuestions: Question[] = [
@@ -158,6 +175,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   };
 
   const gradeInfo = getGradeComment(percentage);
+  // 적응형 시험에서만 의미 있는 추정 레벨 (난이도가 다른 문항을 풀었으므로 정답률보다 이 값이 핵심)
+  const estimate = data.adaptive ? estimateFromTest(data, answers) : null;
+  const headline = estimate ? (() => {
+    const diff = estimate.level - data.adaptive!.startLevel;
+    if (diff >= 0.5) return { title: "Above the Starting Level!", desc: "시작 레벨보다 높은 수준의 문제까지 해결했습니다. 한 단계 높은 책에 도전해 보세요." };
+    if (diff > -0.5) return { title: "Right on Level", desc: "시작 레벨과 비슷한 수준으로 측정되었습니다. 약점 영역을 보완하면 다음 단계로 올라갈 수 있습니다." };
+    return { title: "Building Up", desc: "시작 레벨보다 조금 낮게 측정되었습니다. 추정 지수 근처 수준의 책으로 기초를 다져보세요." };
+  })() : gradeInfo;
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
@@ -168,9 +193,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
             <span className="text-xs font-bold uppercase tracking-widest bg-gray-800 text-gray-200 px-3 py-1 rounded-full mb-3 inline-block border border-gray-700">
               SR Level {data.srLevel} Assessment Result
             </span>
-            <div className="text-6xl font-extrabold my-2">{percentage}%</div>
-            <p className="text-lg font-bold text-gray-200 mb-1">{gradeInfo.title}</p>
-            <p className="text-sm opacity-80 max-w-lg mx-auto">{gradeInfo.desc}</p>
+            {estimate ? (
+              <>
+                <div className="text-xs font-bold text-gray-300 mt-1">추정 SR 지수 (Grade Equivalent)</div>
+                <div className="text-6xl font-extrabold my-2">{estimate.level.toFixed(1)}</div>
+                <p className="text-sm text-gray-300 mb-2">
+                  추정 범위 {estimate.low.toFixed(1)} ~ {estimate.high.toFixed(1)} · 시작 레벨 {data.adaptive!.startLevel.toFixed(1)} · 정답률 {percentage}%
+                </p>
+                <p className="text-[11px] text-gray-400 max-w-lg mx-auto mb-3">
+                  AI가 만든 문항의 예상 난이도로 계산한 참고용 추정치입니다. Renaissance 공식 척도점수(SS)나 GE와 같지 않습니다.
+                  적응형 시험은 정답률이 50~70% 안팎이 되도록 난이도가 맞춰지므로 정답률보다 추정 지수를 보세요.
+                </p>
+              </>
+            ) : (
+              <div className="text-6xl font-extrabold my-2">{percentage}%</div>
+            )}
+            <p className="text-lg font-bold text-gray-200 mb-1">{headline.title}</p>
+            <p className="text-sm opacity-80 max-w-lg mx-auto">{headline.desc}</p>
             <div className="mt-4 text-xs font-medium text-gray-400">
               총 {totalQuestions}문항 중 <span className="text-green-400 font-bold">{correctCount}개 정답</span> / <span className="text-red-400 font-bold">{incorrectCount}개 오답</span>
             </div>
@@ -429,12 +468,30 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                               <span className="text-xs font-bold bg-gray-200 text-gray-800 px-2 py-0.5 rounded">
                                 {q.domain}
                               </span>
+                              {q.skill && (
+                                <span className="text-xs font-bold bg-white border border-gray-300 text-gray-700 px-2 py-0.5 rounded">
+                                  {q.skill}
+                                </span>
+                              )}
                               {q.type === 'LISTENING' && (
                                 <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-bold rounded">
                                   <Headphones className="w-3 h-3 mr-1" /> Listening
                                 </span>
                               )}
                             </div>
+                            {passageByQuestionId.has(q.id) && (
+                              <details className="mb-2 text-sm">
+                                <summary className="cursor-pointer font-bold text-gray-600">지문 다시 보기</summary>
+                                <div className="mt-2 p-3 bg-white rounded-lg border border-gray-200 font-serif text-gray-900 leading-relaxed">
+                                  {passageByQuestionId.get(q.id)!.passageTitle && (
+                                    <p className="font-bold mb-1">{passageByQuestionId.get(q.id)!.passageTitle}</p>
+                                  )}
+                                  {passageByQuestionId.get(q.id)!.passageContent.split('\n').map((para, i) => (
+                                    <p key={i} className="mb-2">{para}</p>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
                             <p className="font-bold text-black text-base md:text-lg leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
                             
                             {q.type === 'LISTENING' && q.script && (
@@ -462,7 +519,7 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
                           <div className="flex items-center text-black">
                             <span className="w-24 font-bold text-gray-600">선택한 답:</span>
                             <span className={`${!isCorrect ? 'text-red-600 font-extrabold underline' : 'text-black font-bold'}`}>
-                              {q.options[answers[q.id]] !== undefined ? q.options[answers[q.id]] : '미응답'}
+                              {answers[q.id] === TIMED_OUT_ANSWER ? '시간 초과' : q.options[answers[q.id]] !== undefined ? q.options[answers[q.id]] : '미응답'}
                             </span>
                           </div>
                           {!isCorrect && (

@@ -1,5 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TestSession } from '../types';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../services/firebase';
+import { leaveSyncCode, syncCodeFromUid } from '../services/syncService';
+import { AdminSyncForm } from './AdminSyncForm';
 import { Clock, Star, Play, CheckCircle, Trash2, Calendar, FileText, ArrowUpDown, Filter, Award, RotateCcw } from 'lucide-react';
 
 interface HistoryViewProps {
@@ -9,6 +13,7 @@ interface HistoryViewProps {
   onPrintSession: (session: TestSession) => void;
   onDeleteSession: (sessionId: string) => void;
   onNewTest: () => void;
+  onSynced: () => void;
 }
 
 export const HistoryView: React.FC<HistoryViewProps> = ({
@@ -17,7 +22,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   onViewResults,
   onPrintSession,
   onDeleteSession,
-  onNewTest
+  onNewTest,
+  onSynced
 }) => {
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'IN_PROGRESS' | 'COMPLETED'>('ALL');
   const [srLevelFilter, setSrLevelFilter] = useState<string>('ALL');
@@ -74,6 +80,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
   return (
     <div className="max-w-5xl mx-auto pb-12">
+      <AdminSyncStatus onSynced={onSynced} />
+
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white p-5 rounded-2xl border border-gray-200 shadow-sm flex items-center space-x-4">
@@ -286,6 +294,42 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             );
           })}
         </div>
+      )}
+    </div>
+  );
+};
+
+// 관리자만 쓰는 동기화 상태 표시. 일반 사용자에게는 작은 링크만 보인다.
+const AdminSyncStatus: React.FC<{ onSynced: () => void }> = ({ onSynced }) => {
+  const [code, setCode] = useState<string | null>(syncCodeFromUid(auth.currentUser?.uid));
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => onAuthStateChanged(auth, user => setCode(syncCodeFromUid(user?.uid))), []);
+
+  const leave = async () => {
+    if (!window.confirm('이 기기에서 동기화를 해제할까요? 기록은 코드에 남아 다른 기기에서 계속 볼 수 있습니다.')) return;
+    await leaveSyncCode();
+    onSynced();
+  };
+
+  if (code) {
+    return (
+      <div className="mb-6 flex items-center justify-between flex-wrap gap-2 bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm">
+        <span className="text-black">관리자 동기화 코드 <span className="font-mono font-extrabold tracking-widest">{code}</span> 기록을 보고 있습니다.</span>
+        <button onClick={leave} className="text-xs font-bold text-gray-600 underline">이 기기 동기화 해제</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-6 text-right">
+      {open ? (
+        <div className="max-w-sm ml-auto bg-white border border-gray-200 rounded-xl p-4">
+          <AdminSyncForm onSuccess={() => { setOpen(false); onSynced(); }} />
+          <button onClick={() => setOpen(false)} className="mt-2 text-xs text-gray-500 underline">닫기</button>
+        </div>
+      ) : (
+        <button onClick={() => setOpen(true)} className="text-xs text-gray-500 underline">관리자 로그인 (동기화 코드)</button>
       )}
     </div>
   );

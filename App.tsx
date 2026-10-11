@@ -7,6 +7,8 @@ import { VocabWorksheet } from './components/VocabWorksheet';
 import { HistoryView } from './components/HistoryView';
 import { generateSRTest, generateTwinTest } from './services/geminiClient';
 import { TestData, UserAnswers, TestSession } from './types';
+import type { TestLength } from './services/srBlueprint';
+import { administerNext, totalQuestionCount } from './services/adaptiveEngine';
 import { initAuthListener, testFirestoreConnection } from './services/firebase';
 import { saveTestSession, fetchUserTestSessions, removeTestSession } from './services/storageService';
 import { History, BookOpen, User as UserIcon } from 'lucide-react';
@@ -57,12 +59,15 @@ const App: React.FC = () => {
     setSessions(updated);
   };
 
-  const handleStart = async (srLevel: string, includeListening: boolean) => {
+  const handleStart = async (srLevel: string, includeListening: boolean, testLength: TestLength, timed: boolean, extendedTime: boolean) => {
     setLoading(true);
     setError(null);
     setIsTwinMode(false);
     try {
-      const data = await generateSRTest(srLevel, includeListening);
+      const generated: TestData = { ...(await generateSRTest(srLevel, includeListening, testLength)), timed, extendedTime };
+      // 적응형 시험: 시작 레벨에 맞춰 첫 문항을 고른다.
+      const first = administerNext(generated, {});
+      const data = first.kind === 'added' ? first.data : generated;
       setTestData(data);
       setUserAnswers({});
       setCurrentStep(0);
@@ -71,13 +76,6 @@ const App: React.FC = () => {
       const newSessionId = 'sr_' + Date.now();
       setCurrentSessionId(newSessionId);
 
-      const allQ = [
-        ...data.vocabulary,
-        ...data.grammar,
-        ...data.reading.flatMap(r => r.questions),
-        ...(data.listening || [])
-      ];
-
       const newSession: TestSession = {
         id: newSessionId,
         userId: user?.uid || 'guest',
@@ -85,7 +83,7 @@ const App: React.FC = () => {
         status: 'IN_PROGRESS',
         currentStep: 0,
         score: 0,
-        totalQuestions: allQ.length,
+        totalQuestions: totalQuestionCount(data),
         correctCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -105,31 +103,26 @@ const App: React.FC = () => {
     }
   };
 
-  const handlePauseAndSave = async (answers: UserAnswers, step: number) => {
+  const handlePauseAndSave = async (answers: UserAnswers, step: number, latestData?: TestData) => {
     setUserAnswers(answers);
     setCurrentStep(step);
+    if (latestData) setTestData(latestData);
+    const current = latestData || testData;
 
-    if (currentSessionId && testData) {
-      const allQ = [
-        ...testData.vocabulary,
-        ...testData.grammar,
-        ...testData.reading.flatMap(r => r.questions),
-        ...(testData.listening || [])
-      ];
-
+    if (currentSessionId && current) {
       const existingSession = sessions.find(s => s.id === currentSessionId);
       const updatedSession: TestSession = {
         id: currentSessionId,
         userId: user?.uid || 'guest',
-        srLevel: testData.srLevel,
+        srLevel: current.srLevel,
         status: 'IN_PROGRESS',
         currentStep: step,
         score: existingSession?.score || 0,
-        totalQuestions: allQ.length,
+        totalQuestions: totalQuestionCount(current),
         correctCount: existingSession?.correctCount || 0,
         createdAt: existingSession?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        testData,
+        testData: current,
         userAnswers: answers,
         isTwinMode
       };
@@ -139,19 +132,21 @@ const App: React.FC = () => {
     }
   };
 
-  const handleQuizComplete = async (answers: UserAnswers) => {
+  const handleQuizComplete = async (answers: UserAnswers, finalData?: TestData) => {
     setUserAnswers(answers);
-    
-    if (!testData) {
+    if (finalData) setTestData(finalData);
+    const current = finalData || testData;
+
+    if (!current) {
       setMode(AppMode.RESULTS);
       return;
     }
 
     const allQuestions = [
-      ...testData.vocabulary, 
-      ...testData.grammar, 
-      ...testData.reading.flatMap(r => r.questions),
-      ...(testData.listening || [])
+      ...current.vocabulary, 
+      ...current.grammar, 
+      ...current.reading.flatMap(r => r.questions),
+      ...(current.listening || [])
     ];
 
     const correctCount = allQuestions.filter(q => answers[q.id] === q.correctAnswer).length;
@@ -164,7 +159,7 @@ const App: React.FC = () => {
     const completedSession: TestSession = {
       id: sessionId,
       userId: user?.uid || 'guest',
-      srLevel: testData.srLevel,
+      srLevel: current.srLevel,
       status: 'COMPLETED',
       currentStep: totalQuestions - 1,
       score,
@@ -173,7 +168,7 @@ const App: React.FC = () => {
       createdAt: existingSession?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       completedAt: new Date().toISOString(),
-      testData,
+      testData: current,
       userAnswers: answers,
       isTwinMode
     };
@@ -225,13 +220,6 @@ const App: React.FC = () => {
       const newTwinSessionId = 'sr_twin_' + Date.now();
       setCurrentSessionId(newTwinSessionId);
 
-      const twinAllQ = [
-        ...twinData.vocabulary,
-        ...twinData.grammar,
-        ...twinData.reading.flatMap(r => r.questions),
-        ...(twinData.listening || [])
-      ];
-
       const newSession: TestSession = {
         id: newTwinSessionId,
         userId: user?.uid || 'guest',
@@ -239,7 +227,7 @@ const App: React.FC = () => {
         status: 'IN_PROGRESS',
         currentStep: 0,
         score: 0,
-        totalQuestions: twinAllQ.length,
+        totalQuestions: totalQuestionCount(twinData),
         correctCount: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -357,6 +345,7 @@ const App: React.FC = () => {
             }}
             onDeleteSession={handleDeleteSession}
             onNewTest={handleRestart}
+            onSynced={refreshSessions}
           />
         )}
 
@@ -367,7 +356,7 @@ const App: React.FC = () => {
             initialStep={currentStep}
             onComplete={handleQuizComplete}
             onPrintMode={() => setMode(AppMode.PRINT)} 
-            onPauseAndSave={(answers, step) => handlePauseAndSave(answers, step)}
+            onPauseAndSave={handlePauseAndSave}
           />
         )}
 
