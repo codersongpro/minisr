@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { RichText } from './RichText';
+import { stripMarkup } from '../services/markup';
 import { TestData, UserAnswers, TIMED_OUT_ANSWER } from '../types';
 import { ChevronRight, ChevronLeft, Check, FileText, Volume2, StopCircle, Loader2, HelpCircle, PauseCircle, Clock } from 'lucide-react';
 import { generateSpeech } from '../services/geminiClient';
@@ -375,7 +377,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
             )}
             <div className="prose prose-lg text-black leading-loose font-serif max-w-none">
               {readingQuestion.passageContent.split('\n').map((para: string, idx: number) => (
-                <p key={idx} className="mb-4 text-2xl text-black text-justify">{para}</p>
+                <p key={idx} className="mb-4 text-2xl text-black text-justify"><RichText text={para} /></p>
               ))}
             </div>
           </div>
@@ -400,7 +402,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
               <div className="mb-8 p-6 bg-blue-50 rounded-xl border-2 border-blue-100 flex flex-col items-center justify-center text-center">
                 <p className="text-blue-900 font-bold mb-4 text-lg">Click to listen to the passage (Native Audio)</p>
                 <button
-                  onClick={() => handlePlayGeminiAudio(currentQuestion.script!)}
+                  onClick={() => handlePlayGeminiAudio(stripMarkup(currentQuestion.script))}
                   disabled={isLoadingAudio}
                   className={`w-20 h-20 rounded-full flex items-center justify-center transition-all shadow-lg 
                     ${isSpeaking 
@@ -429,9 +431,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
               <p className="text-sm font-bold text-gray-600 mb-3">Choose the word that best completes the sentence.</p>
             )}
             <h2 
-              className="text-xl md:text-2xl font-bold text-black mb-6 leading-snug"
-              dangerouslySetInnerHTML={{ __html: currentQuestion.question }} 
-            />
+              className="text-xl md:text-2xl font-bold text-black mb-6 leading-snug"><RichText text={currentQuestion.question} /></h2>
 
             {/* Practice Hint Accordion (Matching Star Reading Practice sheets format) */}
             {currentQuestion.hint && !timed && (
@@ -447,7 +447,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
 
                 {showHint && (
                   <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900 font-medium animate-fadeIn">
-                    <span className="font-bold text-amber-950 mr-1">힌트:</span> {currentQuestion.hint}
+                    <span className="font-bold text-amber-950 mr-1">힌트:</span> <RichText text={currentQuestion.hint} />
                   </div>
                 )}
               </div>
@@ -473,7 +473,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
                   >
                     {selectedAnswer === idx && <Check className="w-5 h-5 text-white" />}
                   </div>
-                  <span className="text-xl font-medium text-black">{option}</span>
+                  <span className="text-xl font-medium text-black">{stripMarkup(option)}</span>
                 </button>
               ))}
             </div>

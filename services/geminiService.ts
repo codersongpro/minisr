@@ -217,7 +217,7 @@ const srItemRules = (calibration: string) => `
 - Distractors must be plausible to a student who misread or partly understood, similar in length and grammatical form to the key. A careful reader must be able to rule each one out.
 - NEVER use "All of the above", "None of the above", "Both A and B", or option letters inside option text (options are shuffled later).
 - Avoid giving away the answer by repeating a rare word from the question only in the correct option.
-- HTML allowed in 'question' only: <u>word</u> to mark a target word. Nothing else.
+- HTML allowed ONLY inside 'question' and 'passageContent': <u>word</u> to mark a target word. NEVER put any HTML tag (including <u>) in 'options', 'hint', 'explanation', 'script', or vocabulary fields — options must be plain text.
 - **Difficulty calibration:** ${calibration}
 - Difficulty comes from vocabulary level, sentence complexity, text length, and the depth of reasoning required — NOT from tricky wording.
 - 'hint': one short English practice hint that points to a clue without revealing the answer.

@@ -1,5 +1,7 @@
 
 import React, { useRef, useState } from 'react';
+import { RichText } from './RichText';
+import { stripMarkup } from '../services/markup';
 import { TestData } from '../types';
 import { Printer, ArrowLeft, Download, Loader2 } from 'lucide-react';
 
@@ -156,7 +158,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                         {q.question.includes('___') && (
                           <p className="text-sm text-gray-600 mb-1">Choose the word that best completes the sentence.</p>
                         )}
-                        <p className="text-black font-medium text-xl leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
+                        <p className="text-black font-medium text-xl leading-snug"><RichText text={q.question} /></p>
                       </div>
                     </div>
                   </div>
@@ -165,7 +167,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                       <div key={idx} className="flex items-center py-0.5">
                          <div className="w-4 h-4 rounded-full border border-black flex items-center justify-center mr-3 flex-shrink-0">
                          </div>
-                         <span className="text-black text-lg leading-tight">{opt}</span>
+                         <span className="text-black text-lg leading-tight">{stripMarkup(opt)}</span>
                       </div>
                     ))}
                   </div>
@@ -189,14 +191,14 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                     <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{q.domain}</span>
                     <div className="flex items-start">
                       <span className="font-bold mr-3 text-black text-xl">{grammarStart + i}.</span>
-                      <p className="text-black font-medium text-xl leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
+                      <p className="text-black font-medium text-xl leading-snug"><RichText text={q.question} /></p>
                     </div>
                   </div>
                   <div className="ml-9 space-y-1.5">
                     {q.options.map((opt, idx) => (
                       <div key={idx} className="flex items-center py-0.5">
                          <div className="w-4 h-4 rounded-full border border-black flex items-center justify-center mr-3 flex-shrink-0"></div>
-                         <span className="text-black text-lg leading-tight">{opt}</span>
+                         <span className="text-black text-lg leading-tight">{stripMarkup(opt)}</span>
                       </div>
                     ))}
                   </div>
@@ -228,7 +230,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                   )}
                   <div className="prose prose-xl prose-p:my-3 font-serif text-black leading-loose text-justify max-w-none break-words">
                     {section.passageContent.split('\n').map((p, idx) => (
-                      <p key={idx} className="indent-8 text-xl">{p}</p>
+                      <p key={idx} className="indent-8 text-xl"><RichText text={p} /></p>
                     ))}
                   </div>
                 </div>
@@ -243,14 +245,14 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                           <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block mb-1">{q.domain}</span>
                           <div className="flex items-start">
                              <span className="font-bold mr-3 text-black text-lg">{qNum}.</span>
-                             <p className="text-black font-medium text-lg leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
+                             <p className="text-black font-medium text-lg leading-snug"><RichText text={q.question} /></p>
                           </div>
                         </div>
                         <div className="ml-8 space-y-1.5">
                           {q.options.map((opt, idx) => (
                             <div key={idx} className="flex items-center py-0.5">
                                <div className="w-4 h-4 rounded-full border border-black flex items-center justify-center mr-3 flex-shrink-0"></div>
-                               <span className="text-black text-lg leading-tight">{opt}</span>
+                               <span className="text-black text-lg leading-tight">{stripMarkup(opt)}</span>
                             </div>
                           ))}
                         </div>
@@ -279,14 +281,14 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                       <div className="flex items-start">
                         <span className="font-bold mr-3 text-black text-xl">{listeningStart + i}.</span>
                         {/* We only show the question text, the script is hidden for the student */}
-                        <p className="text-black font-medium text-xl leading-snug" dangerouslySetInnerHTML={{ __html: q.question }} />
+                        <p className="text-black font-medium text-xl leading-snug"><RichText text={q.question} /></p>
                       </div>
                     </div>
                     <div className="ml-9 space-y-1.5">
                       {q.options.map((opt, idx) => (
                         <div key={idx} className="flex items-center py-0.5">
                            <div className="w-4 h-4 rounded-full border border-black flex items-center justify-center mr-3 flex-shrink-0"></div>
-                           <span className="text-black text-lg leading-tight">{opt}</span>
+                           <span className="text-black text-lg leading-tight">{stripMarkup(opt)}</span>
                         </div>
                       ))}
                     </div>
@@ -313,7 +315,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                           <span className="font-bold w-10 text-lg">{vocabStart + i}.</span>
                           <span className="font-bold text-black w-10 text-lg">({String.fromCharCode(65 + q.correctAnswer)})</span>
                         </div>
-                        <div className="flex-1 text-gray-800 leading-relaxed text-lg">{q.explanation}</div>
+                        <div className="flex-1 text-gray-800 leading-relaxed text-lg"><RichText text={q.explanation} /></div>
                       </div>
                     ))}
                   </div>
@@ -330,7 +332,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                           <span className="font-bold w-10 text-lg">{grammarStart + i}.</span>
                           <span className="font-bold text-black w-10 text-lg">({String.fromCharCode(65 + q.correctAnswer)})</span>
                         </div>
-                        <div className="flex-1 text-gray-800 leading-relaxed text-lg">{q.explanation}</div>
+                        <div className="flex-1 text-gray-800 leading-relaxed text-lg"><RichText text={q.explanation} /></div>
                       </div>
                     ))}
                   </div>
@@ -347,7 +349,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                           <span className="font-bold w-10 text-lg">{readingStart + i}.</span>
                           <span className="font-bold text-black w-10 text-lg">({String.fromCharCode(65 + q.correctAnswer)})</span>
                         </div>
-                        <div className="flex-1 text-gray-800 leading-relaxed text-lg">{q.explanation}</div>
+                        <div className="flex-1 text-gray-800 leading-relaxed text-lg"><RichText text={q.explanation} /></div>
                       </div>
                     ))}
                   </div>
@@ -371,7 +373,7 @@ export const PrintLayout: React.FC<PrintLayoutProps> = ({ data, onBack }) => {
                               <span className="font-bold w-10 text-lg">{listeningStart + i}.</span>
                               <span className="font-bold text-black w-10 text-lg">({String.fromCharCode(65 + q.correctAnswer)})</span>
                             </div>
-                            <div className="flex-1 text-gray-800 leading-relaxed text-lg">{q.explanation}</div>
+                            <div className="flex-1 text-gray-800 leading-relaxed text-lg"><RichText text={q.explanation} /></div>
                           </div>
                         </div>
                       ))}
