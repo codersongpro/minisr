@@ -2,8 +2,8 @@
 // 문항 난이도와 학생 능력을 같은 Grade Equivalent(GE) 척도에 두고,
 // 추측 확률을 반영한 로지스틱(IRT) 모형과 EAP 추정으로 능력을 계산한다.
 import type { AdaptiveState, PassageItemSpec, Question, ReadingSection, TestData, UserAnswers, VocabWord } from '../types';
-import { getBlueprint } from './srBlueprint.ts';
-import type { TestLength } from './srBlueprint.ts';
+import { getBlueprint } from './srBlueprint.js';
+import type { TestLength } from './srBlueprint.js';
 
 const SLOPE = 1.2; // GE 1단계 차이당 로지트 변화
 const PRIOR_SD = 1.5;

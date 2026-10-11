@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   addVocabPool, shouldRefreshVocab, vocabRefreshDifficulties, administerNext, addPassagePool, createAdaptiveState, estimateAbility, estimateFromTest,
   nextPassageSpecs, plannedTotal, probCorrect, shouldPrefetchPassages, totalQuestionCount,
-} from '../services/adaptiveEngine.ts';
+} from '../services/adaptiveEngine.js';
 
 let nextId = 1000;
 const item = (difficulty, domain = 'Word Knowledge and Skills', type = 'VOCAB') => ({
