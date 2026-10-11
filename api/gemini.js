@@ -1,5 +1,11 @@
 import { hasValidSession, isSameOrigin } from './_auth.js';
-import { generateSRTest, generateSpeech, generateTwinTest } from '../services/geminiService.ts';
+import { generatePassageItems, generateSRTest, generateSpeech, generateTwinTest, generateVocabItems } from '../services/geminiService.ts';
+import { SR_DOMAINS } from '../services/srBlueprint.ts';
+
+const PASSAGE_DOMAINS = new Set(Object.values(SR_DOMAINS));
+const MAX_PASSAGE_SPECS = 8;
+const MAX_VOCAB_ITEMS = 10;
+const validDifficulty = (d) => typeof d === 'number' && Number.isFinite(d) && d >= 0 && d <= 13;
 
 function json(res, status, body) {
   res.status(status).setHeader('Content-Type', 'application/json');
@@ -24,6 +30,22 @@ export default async function handler(req, res) {
         return json(res, 400, { error: '문제 생성 요청이 올바르지 않습니다.' });
       }
       return json(res, 200, await generateSRTest(String(body.srLevel), body.includeListening, testLength));
+    }
+
+    if (body.action === 'vocab') {
+      const list = body.difficulties;
+      const valid = validLevel(body.srLevel) && Array.isArray(list) && list.length > 0 && list.length <= MAX_VOCAB_ITEMS && list.every(validDifficulty);
+      if (!valid) return json(res, 400, { error: '어휘 문제 요청이 올바르지 않습니다.' });
+      return json(res, 200, await generateVocabItems(list, Number(body.srLevel)));
+    }
+
+    if (body.action === 'passages') {
+      const specs = body.specs;
+      const valid = validLevel(body.srLevel) && Array.isArray(specs) && specs.length > 0 && specs.length <= MAX_PASSAGE_SPECS &&
+        specs.every(s => s && PASSAGE_DOMAINS.has(s.domain) && validDifficulty(s.difficulty));
+      if (!valid) return json(res, 400, { error: '지문 문제 요청이 올바르지 않습니다.' });
+      const clean = specs.map(s => ({ domain: s.domain, difficulty: s.difficulty }));
+      return json(res, 200, await generatePassageItems(clean, Number(body.srLevel)));
     }
 
     if (body.action === 'twin') {

@@ -49,11 +49,32 @@ const parseLevel = (srLevel: string) => {
   return Number.isFinite(n) ? n : 3;
 };
 
-// 실제 Star Reading의 문항당 제한시간: K-2는 어휘 60초/지문 120초, 3학년 이상은 45초/90초.
-export const getTimeLimits = (srLevel: string) =>
-  parseLevel(srLevel) < 3
-    ? { vocabSeconds: 60, passageSeconds: 120 }
-    : { vocabSeconds: 45, passageSeconds: 90 };
+// 실제 Star Reading(34문항판)의 문항당 제한시간: K-2는 어휘 60초/지문 120초, 3학년 이상은 45초/90초.
+// 연장 시간(편의 제공) 설정: K-2는 180초/270초, 3학년 이상은 135초/270초.
+export const getTimeLimits = (srLevel: string, extended = false) => {
+  const early = parseLevel(srLevel) < 3;
+  if (extended) return early ? { vocabSeconds: 180, passageSeconds: 270 } : { vocabSeconds: 135, passageSeconds: 270 };
+  return early ? { vocabSeconds: 60, passageSeconds: 120 } : { vocabSeconds: 45, passageSeconds: 90 };
+};
+
+// Star Reading 기술 매뉴얼: K-1 수준 문항은 선택지 3개, 2학년 수준 이상은 4개.
+export const optionCountFor = (difficulty: number) => (difficulty < 2 ? 3 : 4);
+
+export const passageWordsFor = (level: number) => {
+  if (level < 1.5) return '15-35 words (2-3 very short, decodable sentences)';
+  if (level < 3) return '35-70 words';
+  if (level < 5) return '70-130 words';
+  if (level < 8) return '110-180 words';
+  return '150-250 words';
+};
+
+export const clozeLengthFor = (level: number) => {
+  if (level < 1.5) return 'ONE short sentence (5-9 words)';
+  if (level < 3) return 'ONE sentence (8-14 words)';
+  if (level < 5) return 'ONE or TWO sentences (12-25 words total)';
+  if (level < 8) return 'TWO sentences (20-35 words total)';
+  return 'TWO or THREE sentences (25-45 words total) with academic vocabulary';
+};
 
 export const getBlueprint = (srLevel: string, length: TestLength = 'full'): Blueprint => {
   const level = parseLevel(srLevel);
@@ -66,13 +87,8 @@ export const getBlueprint = (srLevel: string, length: TestLength = 'full'): Blue
   else if (level < 6) split = mini ? [5, 3, 2, 2] : [9, 6, 5, 4];
   else split = mini ? [4, 3, 3, 2] : [8, 5, 6, 5];
 
-  let passageWords: string;
-  let clozeSentences: string;
-  if (level < 1.5) { passageWords = '15-35 words (2-3 very short, decodable sentences)'; clozeSentences = 'ONE short sentence (5-9 words)'; }
-  else if (level < 3) { passageWords = '35-70 words'; clozeSentences = 'ONE sentence (8-14 words)'; }
-  else if (level < 5) { passageWords = '70-130 words'; clozeSentences = 'ONE or TWO sentences (12-25 words total)'; }
-  else if (level < 8) { passageWords = '110-180 words'; clozeSentences = 'TWO sentences (20-35 words total)'; }
-  else { passageWords = '150-250 words'; clozeSentences = 'TWO or THREE sentences (25-45 words total) with academic vocabulary'; }
+  const passageWords = passageWordsFor(level);
+  const clozeSentences = clozeLengthFor(level);
 
   return {
     vocabCount: mini ? 5 : 10,

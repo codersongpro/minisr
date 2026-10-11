@@ -4,7 +4,7 @@ import { TestSession } from '../types';
 import { TestLength, getTimeLimits } from '../services/srBlueprint';
 
 interface WelcomeScreenProps {
-  onStart: (srLevel: string, includeListening: boolean, testLength: TestLength, timed: boolean) => void;
+  onStart: (srLevel: string, includeListening: boolean, testLength: TestLength, timed: boolean, extendedTime: boolean) => void;
   onOpenHistory: () => void;
   onResumeSession?: (session: TestSession) => void;
   inProgressSession?: TestSession | null;
@@ -22,12 +22,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   const [includeListening, setIncludeListening] = useState(false);
   const [testLength, setTestLength] = useState<TestLength>('full');
   const [timed, setTimed] = useState(true);
-  const limits = getTimeLimits(level);
+  const [extendedTime, setExtendedTime] = useState(false);
+  const limits = getTimeLimits(level, extendedTime);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (level && !isLoading) {
-      onStart(level, includeListening, testLength, timed);
+      onStart(level, includeListening, testLength, timed, timed && extendedTime);
     }
   };
 
@@ -73,7 +74,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="text-left">
             <label htmlFor="srLevel" className="block text-sm font-medium text-black mb-2">
-              목표 SR 지수 (예: 2.5, 4.1, 1.0)
+              시작 SR 지수 (최근 SR 점수 또는 현재 학년, 예: 2.5, 4.1)
             </label>
             <div className="relative">
               <Star className="absolute left-3 top-3 w-5 h-5 text-gray-400 z-10" />
@@ -123,6 +124,13 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
             </div>
           </div>
 
+          {timed && (
+            <label className="flex items-start text-left text-xs text-gray-700 cursor-pointer -mt-3">
+              <input type="checkbox" checked={extendedTime} onChange={(e) => setExtendedTime(e.target.checked)} className="mt-0.5 mr-2" />
+              <span><span className="font-bold text-black">연장 시간 적용</span> — 실제 SR의 편의 제공 설정과 같은 시간 (학교에서 연장 시간을 받는 경우)</span>
+            </label>
+          )}
+
           <div className="flex items-center p-4 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer hover:bg-gray-100 transition-colors" onClick={() => setIncludeListening(!includeListening)}>
             <div className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors ${includeListening ? 'bg-black border-black' : 'border-gray-400 bg-white'}`}>
               {includeListening && <div className="w-2.5 h-2.5 bg-white rounded-sm" />}
@@ -161,7 +169,7 @@ export const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       </div>
       
       <div className="mt-6 text-center text-black text-sm max-w-sm font-medium">
-        <p>AI가 입력하신 레벨을 기준으로 실제 Star Reading의 5개 영역과 문항 형식에 맞춰 문제를 생성합니다. 생성에 30초~1분 정도 걸립니다. (듣기 선택 시 +2문제)</p>
+        <p>실제 Star Reading처럼 적응형으로 출제됩니다. 맞히면 더 어려운 문제, 틀리면 더 쉬운 문제가 나오고, 끝나면 추정 SR 지수를 알려드립니다. 입력한 레벨은 시작점으로만 쓰입니다. (듣기 선택 시 +2문제)</p>
       </div>
     </div>
   );

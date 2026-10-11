@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { TestData, UserAnswers, Question, ReadingSection, TIMED_OUT_ANSWER } from '../types';
+import { estimateFromTest } from '../services/adaptiveEngine';
 import { RefreshCw, Printer, CheckCircle, XCircle, Download, ChevronRight, ChevronLeft, Volume2, Sparkles, Filter, Loader2, Headphones, TrendingUp, AlertTriangle, Award, Target, BookOpen, Brain } from 'lucide-react';
 
 interface ResultsViewProps {
@@ -174,6 +175,14 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
   };
 
   const gradeInfo = getGradeComment(percentage);
+  // 적응형 시험에서만 의미 있는 추정 레벨 (난이도가 다른 문항을 풀었으므로 정답률보다 이 값이 핵심)
+  const estimate = data.adaptive ? estimateFromTest(data, answers) : null;
+  const headline = estimate ? (() => {
+    const diff = estimate.level - data.adaptive!.startLevel;
+    if (diff >= 0.5) return { title: "Above the Starting Level!", desc: "시작 레벨보다 높은 수준의 문제까지 해결했습니다. 한 단계 높은 책에 도전해 보세요." };
+    if (diff > -0.5) return { title: "Right on Level", desc: "시작 레벨과 비슷한 수준으로 측정되었습니다. 약점 영역을 보완하면 다음 단계로 올라갈 수 있습니다." };
+    return { title: "Building Up", desc: "시작 레벨보다 조금 낮게 측정되었습니다. 추정 지수 근처 수준의 책으로 기초를 다져보세요." };
+  })() : gradeInfo;
 
   return (
     <div className="max-w-4xl mx-auto pb-12">
@@ -184,9 +193,23 @@ export const ResultsView: React.FC<ResultsViewProps> = ({
             <span className="text-xs font-bold uppercase tracking-widest bg-gray-800 text-gray-200 px-3 py-1 rounded-full mb-3 inline-block border border-gray-700">
               SR Level {data.srLevel} Assessment Result
             </span>
-            <div className="text-6xl font-extrabold my-2">{percentage}%</div>
-            <p className="text-lg font-bold text-gray-200 mb-1">{gradeInfo.title}</p>
-            <p className="text-sm opacity-80 max-w-lg mx-auto">{gradeInfo.desc}</p>
+            {estimate ? (
+              <>
+                <div className="text-xs font-bold text-gray-300 mt-1">추정 SR 지수 (Grade Equivalent)</div>
+                <div className="text-6xl font-extrabold my-2">{estimate.level.toFixed(1)}</div>
+                <p className="text-sm text-gray-300 mb-2">
+                  추정 범위 {estimate.low.toFixed(1)} ~ {estimate.high.toFixed(1)} · 시작 레벨 {data.adaptive!.startLevel.toFixed(1)} · 정답률 {percentage}%
+                </p>
+                <p className="text-[11px] text-gray-400 max-w-lg mx-auto mb-3">
+                  AI가 만든 문항의 예상 난이도로 계산한 참고용 추정치입니다. Renaissance 공식 척도점수(SS)나 GE와 같지 않습니다.
+                  적응형 시험은 정답률이 50~70% 안팎이 되도록 난이도가 맞춰지므로 정답률보다 추정 지수를 보세요.
+                </p>
+              </>
+            ) : (
+              <div className="text-6xl font-extrabold my-2">{percentage}%</div>
+            )}
+            <p className="text-lg font-bold text-gray-200 mb-1">{headline.title}</p>
+            <p className="text-sm opacity-80 max-w-lg mx-auto">{headline.desc}</p>
             <div className="mt-4 text-xs font-medium text-gray-400">
               총 {totalQuestions}문항 중 <span className="text-green-400 font-bold">{correctCount}개 정답</span> / <span className="text-red-400 font-bold">{incorrectCount}개 오답</span>
             </div>

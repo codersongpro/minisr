@@ -3,6 +3,9 @@ import { TestData, UserAnswers, TIMED_OUT_ANSWER } from '../types';
 import { ChevronRight, ChevronLeft, Check, FileText, Volume2, StopCircle, Loader2, HelpCircle, PauseCircle, Clock } from 'lucide-react';
 import { generateSpeech } from '../services/geminiClient';
 import { getTimeLimits } from '../services/srBlueprint';
+import { addPassagePool, addVocabPool, administerNext, nextPassageSpecs, shouldPrefetchPassages, shouldRefreshVocab, stripPools, totalQuestionCount, vocabRefreshDifficulties } from '../services/adaptiveEngine';
+import { generateVocabItems } from '../services/geminiClient';
+import { fetchPassagePool } from '../services/adaptivePool';
 
 // 실제 Star Reading은 남은 시간이 15초일 때 경고를 띄운다.
 const TIME_WARNING_SECONDS = 15;
@@ -11,9 +14,9 @@ interface QuizModeProps {
   data: TestData;
   initialAnswers?: UserAnswers;
   initialStep?: number;
-  onComplete: (answers: UserAnswers) => void;
+  onComplete: (answers: UserAnswers, data: TestData) => void;
   onPrintMode: () => void;
-  onPauseAndSave: (answers: UserAnswers, currentStep: number) => void;
+  onPauseAndSave: (answers: UserAnswers, currentStep: number, data: TestData) => void;
 }
 
 // Helpers for PCM Decoding
@@ -47,7 +50,7 @@ async function decodeAudioData(
 }
 
 export const QuizMode: React.FC<QuizModeProps> = ({ 
-  data, 
+  data: initialData, 
   initialAnswers = {}, 
   initialStep = 0,
   onComplete, 
@@ -57,6 +60,20 @@ export const QuizMode: React.FC<QuizModeProps> = ({
   const [currentStep, setCurrentStep] = useState(initialStep);
   const [answers, setAnswers] = useState<UserAnswers>(initialAnswers);
   const [showHint, setShowHint] = useState(false);
+
+  // 적응형 시험은 풀이 중에 다음 문항이 추가되므로 시험 데이터를 컴포넌트 안에서 관리한다.
+  const [data, setData] = useState<TestData>(initialData);
+  const dataRef = useRef(data);
+  const commitData = (next: TestData) => {
+    dataRef.current = next;
+    setData(next);
+  };
+  const [preparing, setPreparing] = useState(false);
+  const preparingRef = useRef(false);
+  const [prepareError, setPrepareError] = useState<string | null>(null);
+  const advancingRef = useRef(false);
+  const poolRequestRef = useRef<Promise<void> | null>(null);
+  const vocabRequestRef = useRef<Promise<void> | null>(null);
   
   // Audio State
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -85,21 +102,22 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     ...listeningQuestions
   ];
 
-  const totalQuestions = allQuestions.length;
+  const totalQuestions = Math.max(allQuestions.length, totalQuestionCount(data));
   const progress = ((currentStep + 1) / totalQuestions) * 100;
   
   const currentQuestion = allQuestions[currentStep];
 
   // 실전 모드: 문항별 제한시간 (어휘 문항과 지문 문항의 시간이 다르다)
   const timed = !!data.timed;
-  const limits = getTimeLimits(data.srLevel);
+  const limits = getTimeLimits(data.srLevel, !!data.extendedTime);
   const timeLimit = currentQuestion.type === 'VOCAB' ? limits.vocabSeconds : limits.passageSeconds;
   const [timeLeft, setTimeLeft] = useState(timeLimit);
 
   useEffect(() => {
     if (!timed) return;
     setTimeLeft(timeLimit);
-    const timer = setInterval(() => setTimeLeft(s => Math.max(0, s - 1)), 1000);
+    // 다음 문제를 준비하는 동안에는 시간이 흐르지 않는다.
+    const timer = setInterval(() => setTimeLeft(s => (preparingRef.current ? s : Math.max(0, s - 1))), 1000);
     return () => clearInterval(timer);
   }, [currentStep, timed]);
 
@@ -146,6 +164,45 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     setIsLoadingAudio(false);
   };
 
+  // 학생 응답으로 능력을 추정해 다음 지문 문항 풀을 요청한다 (이미 요청 중이면 그 요청을 기다린다).
+  const requestPassagePool = (currentAnswers: UserAnswers) => {
+    if (poolRequestRef.current) return poolRequestRef.current;
+    const base = dataRef.current;
+    const state = base.adaptive!;
+    const countsAsStage = state.stagesRequested < state.stageSizes.length;
+    const request = fetchPassagePool(nextPassageSpecs(base, currentAnswers), state.startLevel)
+      .then(({ sections, keyVocabulary }) => {
+        commitData(addPassagePool(dataRef.current, sections, keyVocabulary, countsAsStage));
+      })
+      .finally(() => { poolRequestRef.current = null; });
+    poolRequestRef.current = request;
+    return request;
+  };
+
+  const prefetchIfNeeded = (current: TestData, currentAnswers: UserAnswers) => {
+    if (shouldRefreshVocab(current) && !vocabRequestRef.current) {
+      const state = current.adaptive!;
+      // 보충에 실패해도 처음 받은 어휘 풀로 계속 진행할 수 있다.
+      vocabRequestRef.current = generateVocabItems(vocabRefreshDifficulties(current, currentAnswers), String(state.startLevel))
+        .then(({ vocabulary, keyVocabulary }) => commitData(addVocabPool(dataRef.current, vocabulary, keyVocabulary)))
+        .catch(() => {})
+        .finally(() => { vocabRequestRef.current = null; });
+    }
+    if (shouldPrefetchPassages(current)) {
+      // 실패해도 다음 문항이 필요할 때 다시 요청한다.
+      requestPassagePool(currentAnswers).catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    prefetchIfNeeded(dataRef.current, answers);
+  }, []);
+
+  const setPreparingState = (value: boolean) => {
+    preparingRef.current = value;
+    setPreparing(value);
+  };
+
   const handleAnswer = (optionIndex: number) => {
     const updatedAnswers = {
       ...answers,
@@ -153,17 +210,45 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     };
     setAnswers(updatedAnswers);
     // Auto sync progress
-    onPauseAndSave(updatedAnswers, currentStep);
+    onPauseAndSave(updatedAnswers, currentStep, dataRef.current);
   };
 
-  const nextQuestion = (currentAnswers: UserAnswers = answers) => {
+  const nextQuestion = async (currentAnswers: UserAnswers = answers) => {
+    if (advancingRef.current) return;
+    advancingRef.current = true;
     stopAudio();
-    if (currentStep < totalQuestions - 1) {
-      const nextStep = currentStep + 1;
-      setCurrentStep(nextStep);
-      onPauseAndSave(currentAnswers, nextStep);
-    } else {
-      onComplete(currentAnswers);
+    setPrepareError(null);
+    try {
+      let next = dataRef.current;
+      const administered = next.vocabulary.length + next.grammar.length + next.reading.reduce((n, s) => n + s.questions.length, 0);
+      // 적응형: 마지막으로 출제된 문항까지 풀었으면 응답을 반영해 다음 문항을 고른다.
+      if (next.adaptive && currentStep + 1 >= administered) {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const result = administerNext(next, currentAnswers);
+          if (result.kind === 'added') { next = result.data; break; }
+          if (result.kind === 'done') break;
+          setPreparingState(true);
+          await requestPassagePool(currentAnswers);
+          next = dataRef.current;
+        }
+        commitData(next);
+      }
+
+      const flatCount = next.vocabulary.length + next.grammar.length + next.reading.reduce((n, s) => n + s.questions.length, 0) + next.listening.length;
+      if (currentStep < flatCount - 1) {
+        const nextStep = currentStep + 1;
+        setCurrentStep(nextStep);
+        onPauseAndSave(currentAnswers, nextStep, next);
+        if (next.adaptive) prefetchIfNeeded(next, currentAnswers);
+      } else {
+        onComplete(currentAnswers, stripPools(next));
+      }
+    } catch (error) {
+      console.error('Failed to prepare next question:', error);
+      setPrepareError('다음 문제를 준비하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해주세요.');
+    } finally {
+      setPreparingState(false);
+      advancingRef.current = false;
     }
   };
 
@@ -172,7 +257,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
     if (currentStep > 0) {
       const prevStep = currentStep - 1;
       setCurrentStep(prevStep);
-      onPauseAndSave(answers, prevStep);
+      onPauseAndSave(answers, prevStep, dataRef.current);
     }
   };
 
@@ -257,7 +342,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
               </span>
             )}
             <button
-              onClick={() => onPauseAndSave(answers, currentStep)}
+              onClick={() => onPauseAndSave(answers, currentStep, dataRef.current)}
               className="flex items-center text-xs md:text-sm font-bold bg-white text-black border border-black hover:bg-gray-100 px-3 py-1.5 rounded-lg shadow-sm transition-all"
               title="현재 답변 및 진행 상태를 저장하고 홈으로 돌아갑니다."
             >
@@ -394,6 +479,19 @@ export const QuizMode: React.FC<QuizModeProps> = ({
             </div>
           </div>
 
+          {(preparing || prepareError) && (
+            <div className={`mt-4 p-3 rounded-xl border text-sm font-bold flex items-center justify-between gap-3 ${prepareError ? 'bg-red-50 border-red-200 text-red-700' : 'bg-gray-100 border-gray-300 text-gray-700'}`}>
+              {prepareError ? (
+                <>
+                  <span>{prepareError}</span>
+                  <button onClick={() => nextQuestion()} className="shrink-0 bg-black text-white px-3 py-1.5 rounded-lg">다시 시도</button>
+                </>
+              ) : (
+                <span className="flex items-center"><Loader2 className="w-4 h-4 mr-2 animate-spin" />응답에 맞춰 다음 문제를 준비하고 있어요...</span>
+              )}
+            </div>
+          )}
+
           {/* Footer controls */}
           <div className="mt-6 flex justify-between items-center flex-wrap gap-4">
             <button
@@ -417,7 +515,7 @@ export const QuizMode: React.FC<QuizModeProps> = ({
 
               <button
                 onClick={() => nextQuestion()}
-                disabled={!hasAnswer}
+                disabled={!hasAnswer || preparing}
                 className="bg-black hover:bg-gray-800 text-white font-bold py-3.5 px-8 md:px-10 rounded-xl shadow-lg disabled:opacity-50 disabled:shadow-none transition-all flex items-center text-lg"
               >
                 <span>{currentStep === totalQuestions - 1 ? '결과 제출하기' : '다음 문제'}</span>

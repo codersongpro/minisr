@@ -10,6 +10,7 @@ export interface Question {
   options: string[];
   correctAnswer: number; // Index 0-3
   explanation: string;
+  difficulty?: number; // 문항 목표 난이도 (Grade Equivalent), 적응형 선택과 레벨 추정에 사용
 }
 
 export interface VocabWord {
@@ -33,6 +34,24 @@ export interface TestData {
   listening: Question[];
   keyVocabulary: VocabWord[];
   timed?: boolean; // 실전 모드: 문항별 제한시간, 이전 문제로 돌아가기·힌트 없음
+  extendedTime?: boolean; // 연장 시간 (Star Reading 편의 제공 설정)
+  adaptive?: AdaptiveState; // 적응형 시험: 아직 출제되지 않은 문항 풀과 진행 계획
+}
+
+export interface PassageItemSpec {
+  domain: string;
+  difficulty: number;
+}
+
+export interface AdaptiveState {
+  startLevel: number;
+  vocabTarget: number; // 앞부분 어휘 문항 수 (실전 10)
+  passageQuota: { domain: string; count: number }[]; // 지문 문항 영역별 출제 수 (실전 합계 24)
+  stageSizes: number[]; // 지문 문항을 몇 개씩 나눠 풀(pool)을 생성할지
+  stagesRequested: number; // 지금까지 요청한 지문 풀 단계 수
+  vocabRefreshed?: boolean; // 어휘 풀을 추정 능력에 맞춰 한 번 보충했는지
+  vocabPool: Question[];
+  passagePool: ReadingSection[];
 }
 
 // -1은 실전 모드에서 제한시간이 지나 자동으로 넘어간 문항(오답 처리)
