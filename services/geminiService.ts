@@ -3,6 +3,7 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import type { TestData, Question, ReadingSection, VocabWord, PassageItemSpec } from "../types";
 import { DOMAIN_SKILLS, SR_DOMAINS, clozeLengthFor, getBlueprint, normalizeTestData, optionCountFor, passageWordsFor } from "./srBlueprint.js";
 import type { TestLength } from "./srBlueprint.js";
+import { questionTypeReference } from "./srQuestionTypes.js";
 import { VOCAB_POOL_SIZE, createAdaptiveState } from "./adaptiveEngine.js";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -261,6 +262,7 @@ ${specs}
   - "In which sentence does <u>X</u> mean the same as in the sentence above?" (only GE 3+)
   - "The prefix <u>un-</u> in <u>unwrap</u> means —" (only GE 2+)
 - skill must be one of: ${DOMAIN_SKILLS[SR_DOMAINS.WORD].join(', ')}.
+${questionTypeReference(['word'])}
 ${srItemRules(PER_ITEM_CALIBRATION)}
 ${namingRules(names, true)}
 ${includeListening ? `
@@ -307,6 +309,7 @@ ${list}
 - "In the passage, the word <u>X</u> means —"
 - "Comparing Texts" items (only when target GE is 4.0 or higher): put two very short texts in one passage labeled "Passage 1" and "Passage 2".
 - "${SR_DOMAINS.ARGUMENT}" items below GE 3.0: keep simple (fact vs. opinion, which reason supports what a writer thinks). At GE 3.0+: the passage contains a clear claim with reasons/evidence (short persuasive letter, review, or opinion paragraph).
+${questionTypeReference(['passage'])}
 ${srItemRules(PER_ITEM_CALIBRATION)}
 ${namingRules(names, false)}
 
@@ -422,6 +425,7 @@ Create a "Twin Questions" review set: for EACH input item, create ONE NEW item t
 2. Passage-based items (type READING, or any input of type GRAMMAR): put each in 'reading' as its OWN short passage (${passageWords}) with EXACTLY ONE question, keeping the same domain and skill. passageTitle: short title for informational texts, "" for story excerpts.
 3. Listening items: put them in 'listening' with a NEW 3-4 sentence 'script' and a matching question.
 4. 'grammar' must be an empty array.
+${questionTypeReference(['word', 'passage', 'grammar'])}
 ${srItemRules(`target Grade Equivalent ${srLevel} for every item; set each item's 'difficulty' field to ${srLevel}.`)}
 ${namingRules(names, allowSpecialNames)}
 

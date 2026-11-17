@@ -21,7 +21,7 @@ export const DOMAIN_SKILLS: Record<string, string[]> = {
   ],
   [SR_DOMAINS.COMPREHENSION]: [
     'Main Idea', 'Key Details', 'Inference', 'Cause and Effect', 'Sequence',
-    'Summarizing', 'Drawing Conclusions', 'Making Predictions',
+    'Summarizing', 'Drawing Conclusions', 'Making Predictions', 'Pronoun Reference',
   ],
   [SR_DOMAINS.LITERARY]: [
     'Character Traits', 'Character Motivation', 'Plot', 'Setting', 'Theme',
@@ -29,7 +29,7 @@ export const DOMAIN_SKILLS: Record<string, string[]> = {
   ],
   [SR_DOMAINS.CRAFT]: [
     "Author's Purpose", 'Word Choice/Tone', 'Figurative Language', 'Text Structure',
-    'Text Features',
+    'Text Features', 'Concluding Sentence',
   ],
   [SR_DOMAINS.ARGUMENT]: [
     'Fact and Opinion', 'Claims and Evidence', 'Supporting Reasons', 'Comparing Texts',
